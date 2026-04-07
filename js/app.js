@@ -9,6 +9,12 @@
 (function () {
 
   /* ─────────────────────────────────────────────────────────
+     CONSTANTS
+  ───────────────────────────────────────────────────────── */
+  var TOAST_DURATION_MS = 2800;
+  var AVERAGE_SPEED_KMH = 40;   // urban/suburban average for ETA estimate
+
+  /* ─────────────────────────────────────────────────────────
      STATE
   ───────────────────────────────────────────────────────── */
   const S = {
@@ -42,7 +48,7 @@
   }
 
   function toast(msg, ms) {
-    ms = ms || 2800;
+    ms = ms || TOAST_DURATION_MS;
     const prev = document.querySelector('.toast');
     if (prev) prev.remove();
     const t = document.createElement('div');
@@ -118,12 +124,15 @@
   }
 
   function fmtETA(km) {
-    // Assume 40 km/h average urban/suburban speed
-    var mins = Math.round(km / 40 * 60);
+    var mins = Math.round(km / AVERAGE_SPEED_KMH * 60);
     if (mins < 1)  return 'Arriving now! 🎉';
     if (mins < 60) return '~' + mins + ' min away';
     var h = Math.floor(mins / 60), m = mins % 60;
     return '~' + h + 'h ' + (m > 0 ? m + 'm' : '') + ' away';
+  }
+
+  function isArrivingSoon(km) {
+    return Math.round(km / AVERAGE_SPEED_KMH * 60) < 1;
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -200,7 +209,7 @@
       var d = t.data;
       var cat = d.category || 'family';
       var ico = CAT_ICON[cat] || '👤';
-      var soon = d.eta && (d.eta.indexOf('now') > -1 || d.eta.indexOf('Arriving') > -1 || (parseInt(d.eta) <= 3 && d.eta.indexOf('min') > -1));
+      var soon = typeof d.km === 'number' ? isArrivingSoon(d.km) : false;
       return '<div class="arrival-card">' +
         '<div class="arrival-avatar ' + esc(cat) + '">' + ico + '</div>' +
         '<div class="arrival-info">' +
@@ -341,7 +350,7 @@
     placeOrMoveMarker(peerId, lat, lng, ico, color, popup, false);
 
     if (!S.trackers[peerId]) S.trackers[peerId] = {};
-    S.trackers[peerId].data = { lat: lat, lng: lng, name: name, category: cat, eta: eta, dist: dist };
+    S.trackers[peerId].data = { lat: lat, lng: lng, name: name, category: cat, km: km, eta: eta, dist: dist };
 
     renderArrivals();
 
@@ -362,8 +371,8 @@
     $('tracker-bar').style.display = '';
     $('share-sheet').style.display = 'none';
 
-    // Own marker
-    L.marker([pos.coords.latitude, pos.coords.longitude], {
+    // Own marker — stored so watchPosition can move it
+    var initialOwnMarker = L.marker([pos.coords.latitude, pos.coords.longitude], {
       icon: makeIcon('📍', '#10b981', false),
     }).addTo(S.map).bindPopup('<b>You — ' + esc(S.name) + '</b>').openPopup();
 
@@ -394,6 +403,8 @@
         }
       }
 
+      var ownMarker = initialOwnMarker;
+
       conn.on('open', function () {
         setStatus(true, 'Live sharing');
         $('tracker-status').textContent = 'Sharing with host in real time';
@@ -403,12 +414,9 @@
         S.watchId = navigator.geolocation.watchPosition(function (p) {
           S.ownPos = p;
           sendLoc(p);
-          // Move own marker
-          S.map.eachLayer(function (layer) {
-            if (layer._latlng && layer !== S.hostMarker) {
-              // crude — own marker is the only non-host marker
-            }
-          });
+          if (ownMarker) {
+            ownMarker.setLatLng([p.coords.latitude, p.coords.longitude]);
+          }
         }, null, { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 });
       });
 
@@ -509,10 +517,15 @@
       if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(function () { toast('✅ Link copied to clipboard!'); });
       } else {
-        var inp = $('share-url');
-        inp.select();
-        document.execCommand('copy');
-        toast('✅ Link copied!');
+        // Legacy fallback (execCommand is deprecated but still the only option on very old browsers)
+        try {
+          var inp = $('share-url');
+          inp.select();
+          document.execCommand('copy');
+          toast('✅ Link copied!');
+        } catch (e) {
+          toast('⚠️ Could not copy — please copy the link manually.');
+        }
       }
     },
 

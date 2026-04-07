@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0a0e1a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -96,9 +96,9 @@
         <div class="field-group" id="field-category" style="display:none">
           <label class="field-label">What kind of tracking?</label>
           <div class="cat-grid">
-            <button class="cat-btn active" data-cat="family"   onclick="App.setCategory('family')">👨‍👩‍👧‍👦 Family</button>
-            <button class="cat-btn"        data-cat="friends"  onclick="App.setCategory('friends')">👥 Friends</button>
-            <button class="cat-btn"        data-cat="business" onclick="App.setCategory('business')">💼 Business</button>
+            <button class="cat-btn active" data-cat="family"   onclick="App.setCategory('family')"   aria-label="Family tracking mode">👨‍👩‍👧‍👦 Family</button>
+            <button class="cat-btn"        data-cat="friends"  onclick="App.setCategory('friends')"  aria-label="Friends tracking mode">👥 Friends</button>
+            <button class="cat-btn"        data-cat="business" onclick="App.setCategory('business')" aria-label="Business tracking mode">💼 Business</button>
           </div>
         </div>
 
