@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>ArriveTime — Know Exactly When They Arrive</title>
+  <meta name="description" content="Real-time GPS arrival tracking for family, friends &amp; business. See who's on the way and when they'll arrive — no sign-up needed." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 1 — LOADING
+  ═══════════════════════════════════════════ -->
+  <div id="screen-loading" class="screen active">
+    <div class="loading-wrap">
+      <div class="splash-logo">
+        <div class="splash-rings">
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+        </div>
+        <div class="splash-pin">📍</div>
+      </div>
+      <h1 class="splash-title">ArriveTime</h1>
+      <p class="splash-sub">Know exactly when they arrive</p>
+      <div class="dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 2 — WELCOME / SETUP
+  ═══════════════════════════════════════════ -->
+  <div id="screen-welcome" class="screen">
+    <div class="welcome-scroll">
+      <div class="welcome-inner">
+
+        <!-- Logo row -->
+        <div class="logo-row">
+          <span class="logo-emoji">📍</span>
+          <span class="logo-wordmark">ArriveTime</span>
+          <span class="logo-badge">BETA</span>
+        </div>
+
+        <h2 class="welcome-h">Real-Time Arrival Tracking</h2>
+        <p class="welcome-p">No sign-up · No app install · 3 easy steps</p>
+
+        <!-- 3-step preview -->
+        <div class="steps-row">
+          <div class="step-box">
+            <div class="step-num">1</div>
+            <div class="step-lbl">Choose role</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-box">
+            <div class="step-num">2</div>
+            <div class="step-lbl">Allow location</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-box">
+            <div class="step-num">3</div>
+            <div class="step-lbl">See arrivals</div>
+          </div>
+        </div>
+
+        <!-- Mode selection cards -->
+        <div class="mode-grid" id="mode-grid">
+          <button class="mode-card" id="btn-host" onclick="App.selectMode('host')">
+            <div class="mode-icon">🏠</div>
+            <div class="mode-body">
+              <div class="mode-title">I'm Waiting</div>
+              <div class="mode-desc">Track people coming to me &amp; see ETA</div>
+            </div>
+            <div class="mode-chev">›</div>
+          </button>
+          <button class="mode-card" id="btn-tracker" onclick="App.selectMode('tracker')">
+            <div class="mode-icon">🚗</div>
+            <div class="mode-body">
+              <div class="mode-title">I'm On My Way</div>
+              <div class="mode-desc">Share my live location with the host</div>
+            </div>
+            <div class="mode-chev">›</div>
+          </button>
+        </div>
+
+        <!-- Category picker (host only) -->
+        <div class="field-group" id="field-category" style="display:none">
+          <label class="field-label">What kind of tracking?</label>
+          <div class="cat-grid">
+            <button class="cat-btn active" data-cat="family"   onclick="App.setCategory('family')">👨‍👩‍👧‍👦 Family</button>
+            <button class="cat-btn"        data-cat="friends"  onclick="App.setCategory('friends')">👥 Friends</button>
+            <button class="cat-btn"        data-cat="business" onclick="App.setCategory('business')">💼 Business</button>
+          </div>
+        </div>
+
+        <!-- Name input (tracker only) -->
+        <div class="field-group" id="field-name" style="display:none">
+          <label class="field-label" for="input-name">Your name <span class="muted">(so they know it's you)</span></label>
+          <input id="input-name" class="text-input" type="text" placeholder="e.g. Mom, Alex, Dr. Smith…" maxlength="40" autocomplete="name" />
+        </div>
+
+        <!-- Error slot -->
+        <div id="error-slot"></div>
+
+        <!-- CTA button -->
+        <button class="cta-btn" id="cta-btn" style="display:none" onclick="App.start()">
+          <span id="cta-icon">📍</span>
+          <span id="cta-text">Allow Location &amp; Start</span>
+        </button>
+
+        <p class="footer-note">🔒 Your location is shared peer-to-peer — never stored on any server.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 3 — MAP
+  ═══════════════════════════════════════════ -->
+  <div id="screen-map" class="screen">
+
+    <!-- Full-screen map -->
+    <div id="map"></div>
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <button class="topbar-back" onclick="App.goHome()" title="Back to home">←</button>
+      <span class="topbar-title" id="topbar-title">ArriveTime</span>
+      <div class="topbar-status" id="topbar-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-lbl" id="status-lbl">Connecting…</span>
+      </div>
+    </div>
+
+    <!-- ─── HOST: Share panel ─── -->
+    <div class="bottom-sheet" id="share-sheet" style="display:none">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <span class="sheet-title">📡 Invite People to Share Their Location</span>
+        <button class="sheet-close" onclick="App.toggleShare(false)" aria-label="Close">✕</button>
+      </div>
+      <div class="share-url-row">
+        <input id="share-url" class="share-url-input" type="text" readonly aria-label="Share link" />
+        <button class="copy-btn" onclick="App.copyUrl()">📋 Copy</button>
+      </div>
+      <button id="btn-native-share" class="native-share-btn" onclick="App.nativeShare()" style="display:none">
+        📤 Share via…
+      </button>
+      <!-- QR code for easy scanning -->
+      <div class="qr-wrap" id="qr-wrap" style="display:none">
+        <p class="qr-label">Or scan this QR code:</p>
+        <img id="qr-img" class="qr-img" alt="QR code for share link" />
+      </div>
+      <p class="share-hint">People just tap the link — no app, no sign-up needed.</p>
+    </div>
+
+    <!-- ─── HOST: Arrivals panel ─── -->
+    <div class="arrivals-panel" id="arrivals-panel">
+      <div class="arrivals-header">
+        <span class="arrivals-count" id="arrivals-count">Waiting for arrivals…</span>
+        <button class="invite-btn" id="invite-btn" onclick="App.toggleShare(true)" style="display:none">＋ Invite</button>
+      </div>
+      <div class="arrivals-list" id="arrivals-list">
+        <p class="empty-hint">Share the invite link to start seeing people on the map.</p>
+      </div>
+    </div>
+
+    <!-- ─── TRACKER: Live sharing indicator ─── -->
+    <div class="tracker-bar" id="tracker-bar" style="display:none">
+      <div class="tracker-bar-icon">📡</div>
+      <div class="tracker-bar-text">
+        <strong>Sharing live location</strong>
+        <span id="tracker-status">Connecting to host…</span>
+      </div>
+    </div>
+
+  </div><!-- /screen-map -->
+
+  <!-- ═══════════════════════════════════════════
+       SCRIPTS
+  ═══════════════════════════════════════════ -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
