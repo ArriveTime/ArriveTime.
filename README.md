@@ -17,7 +17,7 @@ ArriveTime lets you track family, friends, and appointments on a live map. Share
 
 - **Real-time GPS tracking** via the browser Geolocation API
 - **Three group categories** — Family 🏠, Friends 🎉, Business 💼
-- **Live map** powered by Leaflet.js and CartoDB Dark Matter tiles
+- **Live map** powered by Leaflet.js and OpenStreetMap tiles
 - **ETA estimates** calculated from current positions
 - **Share via SMS, Email, or native share sheet**
 - **No registration required** — works instantly in any modern browser
@@ -60,7 +60,7 @@ ArriveTime lets you track family, friends, and appointments on a live map. Share
 | Technology | Purpose |
 |---|---|
 | [Leaflet.js 1.9.4](https://leafletjs.com/) | Interactive maps |
-| [CartoDB Dark Matter](https://carto.com/basemaps/) | Map tiles (free, no API key) |
+| [OpenStreetMap](https://www.openstreetmap.org/) | Map tiles (free, no API key) |
 | Browser Geolocation API | GPS positioning |
 | Vanilla HTML / CSS / JS | No framework, no build step |
 

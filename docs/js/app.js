@@ -8,7 +8,7 @@ let people = [];
 let selectedPerson = null;
 let tileLayer;
 
-const SESSION_ID = Math.random().toString(36).substr(2, 9);
+const SESSION_ID = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(36)).join('').substr(0, 9);
 const BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost'
   : window.location.origin;
@@ -411,8 +411,6 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
-
-document.addEventListener('DOMContentLoaded', () => {});
 
 window._mapClickHandler = () => {
   document.getElementById('arrivalBanner').classList.remove('visible');
