@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ArriveTime — Know Before They Arrive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+
+<!-- ══════════════════ LANDING ══════════════════ -->
+<div id="landing">
+  <div class="logo-wrap">
+    <div class="logo-icon">📍</div>
+    <div class="logo-text">ArriveTime</div>
+  </div>
+
+  <div class="hero-tag">Real-Time GPS · No Registration</div>
+  <h1>Know Before<br>They Arrive</h1>
+  <p class="hero-sub">Track family, friends & appointments on a live map. Share your link, see everyone moving in real time — no app download, no signup.</p>
+
+  <div class="steps-strip">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-info">
+        <div class="step-label">Share</div>
+        <div class="step-desc">Send your link</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-info">
+        <div class="step-label">Add</div>
+        <div class="step-desc">Name your people</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-info">
+        <div class="step-label">Watch</div>
+        <div class="step-desc">See arrivals live</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="category-cards">
+    <div class="cat-card family">
+      <div class="cat-dot" style="background:var(--family)"></div>
+      🏠 Family
+    </div>
+    <div class="cat-card friends">
+      <div class="cat-dot" style="background:var(--friends)"></div>
+      🎉 Friends
+    </div>
+    <div class="cat-card business">
+      <div class="cat-dot" style="background:var(--business)"></div>
+      💼 Business
+    </div>
+  </div>
+
+  <button class="cta-btn" onclick="launchApp()">📍 Start Tracking Now</button>
+  <p class="no-reg">✓ No account &nbsp;·&nbsp; ✓ No app download &nbsp;·&nbsp; ✓ Free forever</p>
+</div>
+
+<!-- ══════════════════ APP ══════════════════ -->
+<div id="app">
+  <!-- NAV -->
+  <nav class="app-nav">
+    <div class="nav-logo">📍 ArriveTime</div>
+    <div class="nav-pulse">
+      <div class="pulse-dot"></div>
+      Live Tracking
+    </div>
+    <button class="share-btn" onclick="copyShareLink()" style="width:auto;padding:7px 14px;border-radius:8px;font-size:0.8rem;">🔗 Share My Link</button>
+  </nav>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <!-- STEP 1: SHARE -->
+      <div class="share-panel">
+        <div class="panel-title"><span class="badge">1</span> Your Tracking Link</div>
+        <div class="share-link-box" onclick="copyShareLink()" id="shareLinkBox">
+          <span class="link-text" id="shareLinkText">arrivetime.com/track/...</span>
+          <span>📋</span>
+        </div>
+        <div class="share-btns" style="margin-top:10px;">
+          <button class="share-btn" onclick="shareVia('sms')">💬 Text</button>
+          <button class="share-btn" onclick="shareVia('email')">📧 Email</button>
+          <button class="share-btn" onclick="shareVia('copy')">📋 Copy</button>
+          <button class="share-btn" onclick="shareVia('native')">⬆️ Share</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 & 3: GROUPS -->
+      <div class="groups-panel">
+        <div class="panel-title" style="margin-bottom:18px;"><span class="badge">2</span> Who Are You Tracking?</div>
+
+        <!-- FAMILY -->
+        <div class="group-section">
+          <div class="group-header">
+            <div class="group-name">
+              <div class="group-color" style="background:var(--family)"></div>
+              🏠 Family
+            </div>
+            <button class="add-btn" onclick="openAddModal('family')">+ Add</button>
+          </div>
+          <div id="family-list"></div>
+        </div>
+
+        <!-- FRIENDS -->
+        <div class="group-section">
+          <div class="group-header">
+            <div class="group-name">
+              <div class="group-color" style="background:var(--friends)"></div>
+              🎉 Friends
+            </div>
+            <button class="add-btn" onclick="openAddModal('friends')">+ Add</button>
+          </div>
+          <div id="friends-list"></div>
+        </div>
+
+        <!-- BUSINESS -->
+        <div class="group-section">
+          <div class="group-header">
+            <div class="group-name">
+              <div class="group-color" style="background:var(--business)"></div>
+              💼 Business
+            </div>
+            <button class="add-btn" onclick="openAddModal('business')">+ Add</button>
+          </div>
+          <div id="business-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map-area">
+      <div id="map"></div>
+
+      <!-- MY LOCATION -->
+      <div class="my-location-panel">
+        <div class="ml-label">📍 My Location</div>
+        <div class="ml-coords" id="myCoords">Acquiring GPS...</div>
+        <div class="ml-accuracy" id="myAccuracy"></div>
+      </div>
+
+      <!-- MAP CONTROLS -->
+      <div class="map-controls">
+        <button class="map-ctrl-btn" onclick="centerOnMe()" title="Center on me">🎯</button>
+        <button class="map-ctrl-btn" onclick="fitAll()" title="Fit all">👁</button>
+        <button class="map-ctrl-btn" onclick="toggleSatellite()" title="Toggle style" id="satBtn">🛰</button>
+      </div>
+
+      <!-- ARRIVAL BANNER -->
+      <div class="arrival-banner" id="arrivalBanner">
+        <div class="banner-name" id="bannerName">—</div>
+        <div class="banner-eta" id="bannerEta">—</div>
+        <div class="banner-sub" id="bannerSub">Estimated arrival time</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PERSON MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title">➕ Add Person</div>
+    <div class="form-field">
+      <label class="form-label">Name</label>
+      <input class="form-input" id="addName" placeholder="e.g. Sarah, Dad, Dr. Kim" />
+    </div>
+    <div class="form-field">
+      <label class="form-label">Group</label>
+      <select class="form-input form-select" id="addGroup">
+        <option value="family">🏠 Family</option>
+        <option value="friends">🎉 Friends</option>
+        <option value="business">💼 Business</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Emoji / Icon</label>
+      <input class="form-input" id="addEmoji" placeholder="e.g. 👩 👴 🚗" maxlength="4" value="👤" />
+    </div>
+    <div class="form-field">
+      <label class="form-label" style="font-size:0.7rem;color:var(--muted)">
+        Share their unique link so they can share location with you
+      </label>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmAdd()">Add & Generate Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Copied to clipboard!</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
