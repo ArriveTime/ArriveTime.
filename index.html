@@ -9,6 +9,10 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- Firebase Legacy/Compat SDKs required for structural layout connection -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 <style>
   :root {
     --bg: #080c14;
@@ -585,8 +589,23 @@
 
 <script>
 // ══════════════════════════════
-//  STATE
+//  STATE & FIREBASE CONNECTION
 // ══════════════════════════════
+// Secure active credentials connected to your project platform container
+const firebaseConfig = {
+  apiKey: "AIzaSyCvJDFCjiG87R-27_sCVpjQkaFf7xM3pmQ",
+  authDomain: "arrivetime-fbb51.firebaseapp.com",
+  databaseURL: "https://arrivetime-fbb51-default-rtdb.firebaseio.com",
+  projectId: "arrivetime-fbb51",
+  storageBucket: "arrivetime-fbb51.firebasestorage.app",
+  messagingSenderId: "565109802674",
+  appId: "1:565109802674:web:543df846eac81f2b49ebab"
+};
+
+// Fire up active data bridge pipelines
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 let map, myMarker, myLat, myLng;
 let watchId = null;
 let satellite = false;
@@ -670,6 +689,15 @@ function onPosition(pos) {
     myMarker.setLatLng([myLat, myLng]);
   }
 
+  // Push updated tracking coordinate down to database engine dynamically
+  if(watchId) {
+    database.ref('sessions/' + SESSION_ID + '/host').set({
+      lat: myLat,
+      lng: myLng,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+
   updateAllETAs();
 }
 
@@ -747,6 +775,7 @@ function openAddModal(group) {
   setTimeout(() => document.getElementById('addName').focus(), 100);
 }
 
+// Explicit execution cleanup logic paths
 function closeModal() {
   document.getElementById('addModal').classList.remove('open');
 }
@@ -880,131 +909,107 @@ function triggerArrivalNotification(p) {
 }
 
 // ══════════════════════════════
-//  RENDER LISTS
+//  RENDER LISTS (Complete Setup)
 // ══════════════════════════════
 function renderLists() {
   ['family', 'friends', 'business'].forEach(g => {
     const list = document.getElementById(g + '-list');
-    const grouped = people.filter(p => p.group === g);
-    if (grouped.length === 0) {
-      list.innerHTML = `<div style="font-size:0.8rem;color:var(--muted);padding:8px 0 4px;">No ${g} tracked yet.</div>`;
-      return;
-    }
-    list.innerHTML = grouped.map(p => `
-      <div class="person-card ${selectedPerson?.id === p.id ? 'active' : ''}" id="card_${p.id}" onclick="selectPersonById('${p.id}')">
-        <div class="avatar" style="background:${GROUP_COLORS[p.group]}22;border-color:${GROUP_COLORS[p.group]}">${p.emoji}</div>
+    if (!list) return;
+    list.innerHTML = '';
+    people.filter(p => p.group === g).forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'person-card ' + (selectedPerson?.id === p.id ? 'active' : '');
+      card.id = 'card_' + p.id;
+      card.innerHTML = `
+        <div class="avatar" style="background:${GROUP_COLORS[g]}22; border: 2px solid ${GROUP_COLORS[g]}">${p.emoji}</div>
         <div class="person-info">
           <div class="person-name">${p.name}</div>
-          <div class="person-eta">
-            <span>${p.etaLabel}</span>
-            ${p.etaMins !== null && p.etaMins < 5 ? '<span style="color:var(--accent2);font-size:0.7rem;margin-left:4px;">Almost here!</span>' : ''}
-          </div>
+          <div class="person-eta">${p.etaLabel}</div>
         </div>
-        <div class="status-dot" style="background:${p.etaMins !== null && p.etaMins < 1 ? 'var(--accent2)' : 'var(--accent)'}"></div>
-      </div>
-    `).join('');
+        <div class="status-dot" style="background:${GROUP_COLORS[g]}"></div>
+      `;
+      card.onclick = () => selectPerson(p);
+      list.appendChild(card);
+    });
   });
 }
 
-function selectPersonById(id) {
-  const p = people.find(x => x.id === id);
-  if (p) selectPerson(p);
-}
-
 // ══════════════════════════════
-//  DEMO DATA
-// ══════════════════════════════
-function seedDemoData() {
-  const demos = [
-    { name: 'Mom', group: 'family', emoji: '👩' },
-    { name: 'Jake', group: 'friends', emoji: '🧑' },
-    { name: 'Dr. Smith', group: 'business', emoji: '💼' }
-  ];
-  demos.forEach(d => {
-    document.getElementById('addName').value = d.name;
-    document.getElementById('addGroup').value = d.group;
-    document.getElementById('addEmoji').value = d.emoji;
-    confirmAdd();
-  });
-  showToast('👋 Demo people added — they\'re heading your way!');
-}
-
-// ══════════════════════════════
-//  MAP CONTROLS
-// ══════════════════════════════
-function centerOnMe() {
-  if (myLat) map.flyTo([myLat, myLng], 15, { duration: 1 });
-}
-
-function fitAll() {
-  const bounds = [];
-  if (myLat) bounds.push([myLat, myLng]);
-  people.forEach(p => bounds.push([p.lat, p.lng]));
-  if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
-}
-
-function toggleSatellite() {
-  satellite = !satellite;
-  const btn = document.getElementById('satBtn');
-  if (satellite) {
-    tileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-    map.getContainer().querySelectorAll('.leaflet-tile').forEach(t => t.style.filter = 'none');
-    btn.textContent = '🗺';
-  } else {
-    tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    map.getContainer().querySelectorAll('.leaflet-tile').forEach(t => t.style.filter = '');
-    btn.textContent = '🛰';
-  }
-}
-
-// ══════════════════════════════
-//  SHARE
+//  UTILITY, SHARING, & CONTROLS
 // ══════════════════════════════
 function updateShareLink() {
-  const link = `${BASE_URL}/share/${SESSION_ID}`;
-  document.getElementById('shareLinkText').textContent = link;
-  document.getElementById('shareLinkBox').setAttribute('data-link', link);
+  const url = `${BASE_URL}/track/${SESSION_ID}`;
+  document.getElementById('shareLinkText').textContent = url;
 }
 
 function copyShareLink() {
-  const link = document.getElementById('shareLinkBox').getAttribute('data-link')
-    || document.getElementById('shareLinkText').textContent;
-  navigator.clipboard.writeText(link).then(() => showToast('📋 Link copied! Send it to anyone.')).catch(() => {});
+  const url = document.getElementById('shareLinkText').textContent;
+  navigator.clipboard.writeText(url);
+  showToast('✅ Link copied to clipboard!');
 }
 
-function shareVia(method) {
-  const link = document.getElementById('shareLinkText').textContent;
-  const text = `Track me live on ArriveTime: ${link}`;
-  if (method === 'native' && navigator.share) {
-    navigator.share({ title: 'ArriveTime', text, url: link });
-  } else if (method === 'sms') {
-    window.open(`sms:?body=${encodeURIComponent(text)}`);
-  } else if (method === 'email') {
-    window.open(`mailto:?subject=Track my arrival&body=${encodeURIComponent(text)}`);
-  } else {
-    navigator.clipboard.writeText(link).then(() => showToast('📋 Link copied!')).catch(() => {});
+function shareVia(platform) {
+  const url = document.getElementById('shareLinkText').textContent;
+  const text = `Track my arrival real-time here: ${url}`;
+  
+  if (platform === 'sms') {
+    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+  } else if (platform === 'email') {
+    window.location.href = `mailto:?subject=ArriveTime%20Live%20Tracking&body=${encodeURIComponent(text)}`;
+  } else if (platform === 'copy') {
+    copyShareLink();
+  } else if (platform === 'native') {
+    if (navigator.share) {
+      navigator.share({ title: 'ArriveTime Tracker', text: text, url: url });
+    } else {
+      copyShareLink();
+    }
   }
 }
 
-// ══════════════════════════════
-//  TOAST
-// ══════════════════════════════
-let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-document.addEventListener('DOMContentLoaded', () => {});
+function centerOnMe() { if (myLat) map.setView([myLat, myLng], 14); }
+function fitAll() { 
+  if(people.length === 0) return;
+  const bounds = people.map(p => [p.lat, p.lng]);
+  if(myLat) bounds.push([myLat, myLng]);
+  map.fitBounds(bounds); 
+}
 
-window._mapClickHandler = () => {
-  document.getElementById('arrivalBanner').classList.remove('visible');
-};
+function toggleSatellite() {
+  satellite = !satellite;
+  tileLayer.setOpacity(satellite ? 0 : 1);
+  showToast(satellite ? '🛰 Satellite Layout Mode' : '🗺 Standard Map Mode');
+}
 
-setInterval(updateAllETAs, 30000);
+function seedDemoData() {
+  if (!myLat) { myLat = 37.7749; myLng = -122.4194; }
+  const demos = [
+    { name: 'Sarah', group: 'family', emoji: '👩' },
+    { name: 'Dr. Kim', group: 'business', emoji: '💼' }
+  ];
+  demos.forEach(d => {
+    const p = { 
+      id: 'd_' + Math.random().toString(36).substr(2, 6),
+      ...d, 
+      lat: myLat + (Math.random()-0.5)*0.03, 
+      lng: myLng + (Math.random()-0.5)*0.03,
+      etaLabel: ''
+    };
+    p.marker = L.marker([p.lat, p.lng], { icon: createPersonIcon(p) })
+      .addTo(map)
+      .on('click', () => selectPerson(p));
+    people.push(p);
+    startSimulatedMovement(p);
+  });
+  updateAllETAs();
+}
 </script>
 </body>
 </html>
