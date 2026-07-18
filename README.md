@@ -324,3 +324,4 @@ document.addEventListener('DOMContentLoaded', () => {});
 window._mapClickHandler = () => { document.getElementById('arrivalBanner').classList.remove('visible'); };
 
 setInterval(updateAllETAs, 30000); </script>
+ 
