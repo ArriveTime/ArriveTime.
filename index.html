@@ -1,3 +1,4 @@
+HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +10,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Firebase Legacy/Compat SDKs required for structural layout connection -->
+<!-- Firebase Legacy/Compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -591,7 +592,6 @@
 // ══════════════════════════════
 //  STATE & FIREBASE CONNECTION
 // ══════════════════════════════
-// Secure active credentials connected to your project platform container
 const firebaseConfig = {
   apiKey: "AIzaSyCvJDFCjiG87R-27_sCVpjQkaFf7xM3pmQ",
   authDomain: "arrivetime-fbb51.firebaseapp.com",
@@ -602,31 +602,36 @@ const firebaseConfig = {
   appId: "1:565109802674:web:543df846eac81f2b49ebab"
 };
 
-// Fire up active data bridge pipelines
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase Realtime Database
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const database = firebase.database();
+
+// Get or generate URL Session Room ID
+const urlParams = new URLSearchParams(window.location.search);
+let SESSION_ID = urlParams.get('session');
+if (!SESSION_ID) {
+  SESSION_ID = Math.random().toString(36).substr(2, 9);
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?session=' + SESSION_ID;
+  window.history.pushState({path: newUrl}, '', newUrl);
+}
+
+// Session User Identity Setup
+const MY_USER_ID = 'u_' + Math.random().toString(36).substr(2, 6);
 
 let map, myMarker, myLat, myLng;
 let watchId = null;
 let satellite = false;
-let people = [];
+let people = {};
 let selectedPerson = null;
 let tileLayer;
 
-const SESSION_ID = Math.random().toString(36).substr(2, 9);
-const BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost'
-  : 'https://arrivetime.com';
-
-const GROUP_COLORS = {
-  family: '#06d6a0',
-  friends: '#f72585',
-  business: '#fbbf24'
-};
+const GROUP_COLORS = { family: '#06d6a0', friends: '#f72585', business: '#fbbf24' };
 const GROUP_EMOJIS = { family: '🏠', friends: '🎉', business: '💼' };
 
 // ══════════════════════════════
-//  LANDING → APP
+//  LANDING & SHARE SETUP
 // ══════════════════════════════
 function launchApp() {
   document.getElementById('landing').style.display = 'none';
@@ -634,39 +639,59 @@ function launchApp() {
   initMap();
   startGPS();
   updateShareLink();
-  setTimeout(seedDemoData, 1500);
+  listenForFirebaseUpdates();
+}
+
+function updateShareLink() {
+  const linkText = window.location.href;
+  document.getElementById('shareLinkText').textContent = linkText;
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    showToast("📋 Tracking link copied to clipboard!");
+  });
+}
+
+function shareVia(method) {
+  const url = encodeURIComponent(window.location.href);
+  const text = encodeURIComponent("Track live arrival times with me on ArriveTime:");
+  if (method === 'sms') window.open(`sms:?body=${text}%20${url}`);
+  else if (method === 'email') window.open(`mailto:?subject=Live%20Arrival%20Tracking&body=${text}%20${url}`);
+  else if (method === 'copy') copyShareLink();
+  else if (method === 'native' && navigator.share) {
+    navigator.share({ title: 'ArriveTime Tracking', text: 'Track my arrival live:', url: window.location.href });
+  }
 }
 
 // ══════════════════════════════
-//  MAP INIT
+//  MAP INITIALIZATION
 // ══════════════════════════════
 function initMap() {
+  if (map) return;
   map = L.map('map', { zoomControl: false, attributionControl: false });
 
-  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(map);
-
+  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   map.setView([37.7749, -122.4194], 12);
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   L.control.attribution({ position: 'bottomright', prefix: '© OSM' }).addTo(map);
+
+  map.on('click', () => {
+    document.getElementById('arrivalBanner').classList.remove('visible');
+    selectedPerson = null;
+  });
 }
 
 // ══════════════════════════════
-//  GPS / GEOLOCATION
+//  GPS / GEOLOCATION PIPELINE
 // ══════════════════════════════
 function startGPS() {
   if (!navigator.geolocation) {
     document.getElementById('myCoords').textContent = 'GPS not supported';
     return;
   }
-
-  const opts = {
-    enableHighAccuracy: true,
-    maximumAge: 5000,
-    timeout: 15000
-  };
+  const opts = { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 };
 
   navigator.geolocation.getCurrentPosition(onPosition, onGPSError, opts);
   watchId = navigator.geolocation.watchPosition(onPosition, onGPSError, opts);
@@ -677,10 +702,8 @@ function onPosition(pos) {
   myLng = pos.coords.longitude;
   const acc = Math.round(pos.coords.accuracy);
 
-  document.getElementById('myCoords').textContent =
-    `${myLat.toFixed(5)}, ${myLng.toFixed(5)}`;
-  document.getElementById('myAccuracy').textContent =
-    `±${acc}m accuracy · ${getSourceLabel(pos)}`;
+  document.getElementById('myCoords').textContent = `${myLat.toFixed(5)}, ${myLng.toFixed(5)}`;
+  document.getElementById('myAccuracy').textContent = `±${acc}m accuracy · ${getSourceLabel(pos)}`;
 
   if (!myMarker) {
     myMarker = L.marker([myLat, myLng], { icon: createMyIcon() }).addTo(map);
@@ -689,14 +712,16 @@ function onPosition(pos) {
     myMarker.setLatLng([myLat, myLng]);
   }
 
-  // Push updated tracking coordinate down to database engine dynamically
-  if(watchId) {
-    database.ref('sessions/' + SESSION_ID + '/host').set({
-      lat: myLat,
-      lng: myLng,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    });
-  }
+  // Push updated tracking coordinate directly to Firebase
+  database.ref('sessions/' + SESSION_ID + '/users/' + MY_USER_ID).update({
+    id: MY_USER_ID,
+    name: "Me",
+    group: "family",
+    emoji: "📍",
+    lat: myLat,
+    lng: myLng,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
 
   updateAllETAs();
 }
@@ -727,45 +752,90 @@ function onGPSError(err) {
 }
 
 // ══════════════════════════════
-//  ICONS
+//  FIREBASE REALTIME SYNC
+// ══════════════════════════════
+function listenForFirebaseUpdates() {
+  const sessionRef = database.ref('sessions/' + SESSION_ID + '/users');
+  sessionRef.on('child_added', snapshot => processFirebaseUser(snapshot.val()));
+  sessionRef.on('child_changed', snapshot => processFirebaseUser(snapshot.val()));
+  sessionRef.on('child_removed', snapshot => {
+    const data = snapshot.val();
+    if (people[data.id]) {
+      map.removeLayer(people[data.id].marker);
+      delete people[data.id];
+      renderLists();
+    }
+  });
+}
+
+function processFirebaseUser(data) {
+  if (!data || data.id === MY_USER_ID) return;
+
+  if (people[data.id]) {
+    people[data.id].lat = data.lat;
+    people[data.id].lng = data.lng;
+    people[data.id].marker.setLatLng([data.lat, data.lng]);
+  } else {
+    const person = {
+      id: data.id,
+      name: data.name || 'User',
+      group: data.group || 'family',
+      emoji: data.emoji || '👤',
+      lat: data.lat,
+      lng: data.lng,
+      etaLabel: ''
+    };
+    person.marker = L.marker([data.lat, data.lng], { icon: createPersonIcon(person) })
+      .addTo(map)
+      .on('click', () => selectPerson(person));
+    
+    people[data.id] = person;
+  }
+  updateAllETAs();
+}
+
+// ══════════════════════════════
+//  MAP CONTROLS & ICONS
 // ══════════════════════════════
 function createMyIcon() {
   return L.divIcon({
-    html: `
-      <div style="
-        width:44px;height:44px;border-radius:50%;
-        background:linear-gradient(135deg,#3b82f6,#06d6a0);
-        display:grid;place-items:center;font-size:20px;
-        border:3px solid #fff;box-shadow:0 0 20px rgba(59,130,246,0.5);
-        animation:pulse 2s ease infinite;
-      ">📍</div>
-      <style>@keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(59,130,246,0.5);}50%{box-shadow:0 0 40px rgba(59,130,246,0.9);}}</style>`,
+    html: `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#06d6a0);display:grid;place-items:center;font-size:20px;border:3px solid #fff;box-shadow:0 0 20px rgba(59,130,246,0.5);">📍</div>`,
     iconSize: [44, 44], iconAnchor: [22, 22], className: ''
   });
 }
 
 function createPersonIcon(p) {
-  const color = GROUP_COLORS[p.group];
+  const color = GROUP_COLORS[p.group] || '#3b82f6';
   return L.divIcon({
-    html: `<div style="
-      width:40px;height:40px;border-radius:50%;
-      background:${color}22;border:2.5px solid ${color};
-      display:grid;place-items:center;font-size:18px;
-      box-shadow:0 0 16px ${color}55;cursor:pointer;
-      backdrop-filter:blur(4px);
-    ">${p.emoji}</div>
-    <div style="
-      position:absolute;top:42px;left:50%;transform:translateX(-50%);
-      background:rgba(8,12,20,0.9);border:1px solid ${color}66;
-      border-radius:6px;padding:3px 8px;white-space:nowrap;
-      font-size:0.7rem;color:#fff;font-family:'DM Sans',sans-serif;font-weight:500;
-    ">${p.name} ${p.etaLabel || ''}</div>`,
+    html: `<div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2.5px solid ${color};display:grid;place-items:center;font-size:18px;box-shadow:0 0 16px ${color}55;cursor:pointer;backdrop-filter:blur(4px);">${p.emoji}</div>
+    <div style="position:absolute;top:42px;left:50%;transform:translateX(-50%);background:rgba(8,12,20,0.9);border:1px solid ${color}66;border-radius:6px;padding:3px 8px;white-space:nowrap;font-size:0.7rem;color:#fff;font-family:'DM Sans',sans-serif;font-weight:500;">${p.name} ${p.etaLabel || ''}</div>`,
     iconSize: [40, 40], iconAnchor: [20, 20], className: ''
   });
 }
 
+function centerOnMe() {
+  if (myLat && myLng) map.flyTo([myLat, myLng], 15);
+}
+
+function fitAll() {
+  const markers = [myMarker, ...Object.values(people).map(p => p.marker)].filter(Boolean);
+  if (markers.length > 0) {
+    const group = L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
+}
+
+function toggleSatellite() {
+  satellite = !satellite;
+  if (satellite) {
+    tileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+  } else {
+    tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+  }
+}
+
 // ══════════════════════════════
-//  PEOPLE MANAGEMENT
+//  PEOPLE & LIST UI MANAGEMENT
 // ══════════════════════════════
 function openAddModal(group) {
   document.getElementById('addGroup').value = group;
@@ -775,7 +845,6 @@ function openAddModal(group) {
   setTimeout(() => document.getElementById('addName').focus(), 100);
 }
 
-// Explicit execution cleanup logic paths
 function closeModal() {
   document.getElementById('addModal').classList.remove('open');
 }
@@ -792,20 +861,12 @@ function confirmAdd() {
   const lat = baseLat + (Math.random() - 0.5) * 0.08;
   const lng = baseLng + (Math.random() - 0.5) * 0.12;
 
-  const person = { id, name, group, emoji, lat, lng, etaLabel: '' };
-  person.marker = L.marker([lat, lng], { icon: createPersonIcon(person) })
-    .addTo(map)
-    .on('click', () => selectPerson(person));
+  database.ref('sessions/' + SESSION_ID + '/users/' + id).set({
+    id, name, group, emoji, lat, lng, updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
 
-  people.push(person);
-  updateAllETAs();
-  renderLists();
   closeModal();
-
-  startSimulatedMovement(person);
-
-  showToast(`✅ ${name} added! Link ready to share.`);
-  map.flyTo([lat, lng], 13, { duration: 1.2 });
+  showToast(`✅ ${name} added to live map!`);
 }
 
 function selectPerson(p) {
@@ -825,19 +886,10 @@ function showArrivalBanner(p) {
   banner.classList.add('visible');
 }
 
-map?.on('click', () => {
-  document.getElementById('arrivalBanner').classList.remove('visible');
-  selectedPerson = null;
-});
-
-// ══════════════════════════════
-//  ETA CALCULATION
-// ══════════════════════════════
 function calcETA(p) {
   if (!myLat) return null;
   const dist = haversine(myLat, myLng, p.lat, p.lng);
-  const speed = 40;
-  const minutes = Math.round((dist / speed) * 60);
+  const minutes = Math.round((dist / 40) * 60);
   return minutes;
 }
 
@@ -858,163 +910,45 @@ function formatETA(mins) {
 }
 
 function updateAllETAs() {
-  people.forEach(p => {
+  Object.values(people).forEach(p => {
     const mins = calcETA(p);
     p.etaMins = mins;
     p.etaLabel = formatETA(mins);
     if (p.marker) p.marker.setIcon(createPersonIcon(p));
   });
   renderLists();
-  if (selectedPerson) showArrivalBanner(selectedPerson);
 }
 
-// ══════════════════════════════
-//  SIMULATED MOVEMENT
-// ══════════════════════════════
-function startSimulatedMovement(p) {
-  const destLat = myLat || 37.7749;
-  const destLng = myLng || -122.4194;
-  const steps = 120;
-  let step = 0;
-  const startLat = p.lat, startLng = p.lng;
-
-  const interval = setInterval(() => {
-    step++;
-    const t = step / steps;
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-    p.lat = startLat + (destLat - startLat) * ease + (Math.random()-0.5)*0.003;
-    p.lng = startLng + (destLng - startLng) * ease + (Math.random()-0.5)*0.003;
-
-    if (p.marker) p.marker.setLatLng([p.lat, p.lng]);
-    updateAllETAs();
-
-    if (step >= steps) {
-      clearInterval(interval);
-      p.lat = destLat; p.lng = destLng;
-      if (p.marker) p.marker.setLatLng([p.lat, p.lng]);
-      triggerArrivalNotification(p);
-    }
-  }, 3000);
-}
-
-function triggerArrivalNotification(p) {
-  showToast(`🎉 ${p.name} has arrived!`);
-  if (Notification.permission === 'granted') {
-    new Notification(`ArriveTime: ${p.name} arrived!`, {
-      body: 'They have reached your location.',
-      icon: '📍'
-    });
-  }
-  Notification.requestPermission?.();
-}
-
-// ══════════════════════════════
-//  RENDER LISTS (Complete Setup)
-// ══════════════════════════════
 function renderLists() {
-  ['family', 'friends', 'business'].forEach(g => {
-    const list = document.getElementById(g + '-list');
-    if (!list) return;
-    list.innerHTML = '';
-    people.filter(p => p.group === g).forEach(p => {
-      const card = document.createElement('div');
-      card.className = 'person-card ' + (selectedPerson?.id === p.id ? 'active' : '');
-      card.id = 'card_' + p.id;
-      card.innerHTML = `
-        <div class="avatar" style="background:${GROUP_COLORS[g]}22; border: 2px solid ${GROUP_COLORS[g]}">${p.emoji}</div>
+  ['family', 'friends', 'business'].forEach(group => {
+    const container = document.getElementById(`${group}-list`);
+    if (!container) return;
+    const groupPeople = Object.values(people).filter(p => p.group === group);
+    
+    if (groupPeople.length === 0) {
+      container.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);padding:8px 0;font-style:italic;">No active markers</div>`;
+      return;
+    }
+
+    container.innerHTML = groupPeople.map(p => `
+      <div class="person-card" id="card_${p.id}" onclick="selectPerson(people['${p.id}'])">
+        <div class="avatar" style="border-color:${GROUP_COLORS[p.group]}">${p.emoji}</div>
         <div class="person-info">
           <div class="person-name">${p.name}</div>
-          <div class="person-eta">${p.etaLabel}</div>
+          <div class="person-eta"><span class="eta-time">${p.etaLabel}</span></div>
         </div>
-        <div class="status-dot" style="background:${GROUP_COLORS[g]}"></div>
-      `;
-      card.onclick = () => selectPerson(p);
-      list.appendChild(card);
-    });
+        <div class="status-dot" style="background:${GROUP_COLORS[p.group]}"></div>
+      </div>
+    `).join('');
   });
-}
-
-// ══════════════════════════════
-//  UTILITY, SHARING, & CONTROLS
-// ══════════════════════════════
-function updateShareLink() {
-  const url = `${BASE_URL}/track/${SESSION_ID}`;
-  document.getElementById('shareLinkText').textContent = url;
-}
-
-function copyShareLink() {
-  const url = document.getElementById('shareLinkText').textContent;
-  navigator.clipboard.writeText(url);
-  showToast('✅ Link copied to clipboard!');
-}
-
-function shareVia(platform) {
-  const url = document.getElementById('shareLinkText').textContent;
-  const text = `Track my arrival real-time here: ${url}`;
-  
-  if (platform === 'sms') {
-    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
-  } else if (platform === 'email') {
-    window.location.href = `mailto:?subject=ArriveTime%20Live%20Tracking&body=${encodeURIComponent(text)}`;
-  } else if (platform === 'copy') {
-    copyShareLink();
-  } else if (platform === 'native') {
-    if (navigator.share) {
-      navigator.share({ title: 'ArriveTime Tracker', text: text, url: url });
-    } else {
-      copyShareLink();
-    }
-  }
 }
 
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function centerOnMe() { if (myLat) map.setView([myLat, myLng], 14); }
-function fitAll() { 
-  if(people.length === 0) return;
-  const bounds = people.map(p => [p.lat, p.lng]);
-  if(myLat) bounds.push([myLat, myLng]);
-  map.fitBounds(bounds); 
-}
-
-function toggleSatellite() {
-  satellite = !satellite;
-  tileLayer.setOpacity(satellite ? 0 : 1);
-  showToast(satellite ? '🛰 Satellite Layout Mode' : '🗺 Standard Map Mode');
-}
-
-function seedDemoData() {
-  if (!myLat) { myLat = 37.7749; myLng = -122.4194; }
-  const demos = [
-    { name: 'Sarah', group: 'family', emoji: '👩' },
-    { name: 'Dr. Kim', group: 'business', emoji: '💼' }
-  ];
-  demos.forEach(d => {
-    const p = { 
-      id: 'd_' + Math.random().toString(36).substr(2, 6),
-      ...d, 
-      lat: myLat + (Math.random()-0.5)*0.03, 
-      lng: myLng + (Math.random()-0.5)*0.03,
-      etaLabel: ''
-    };
-    p.marker = L.marker([p.lat, p.lng], { icon: createPersonIcon(p) })
-      .addTo(map)
-      .on('click', () => selectPerson(p));
-    people.push(p);
-    startSimulatedMovement(p);
-  });
-  updateAllETAs();
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
 </script>
-  <footer>
-    <p style="margin-bottom: 8px; font-weight: 700;">ArriveTime.com is an independent transit and logistics information service.</p>
-    <p><a href="privacy.html">Privacy Policy</a> | <a href="terms.html">Terms of Service</a></p>
-    <p style="margin-top: 8px;">&copy; 2026 ArriveTime.com - All Rights Reserved</p>
-</footer>
 </body>
 </html>
