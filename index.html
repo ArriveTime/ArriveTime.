@@ -202,6 +202,41 @@
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
 
+  /* SEARCH DESTINATION PANEL */
+  .dest-panel {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(22, 31, 48, 0.4);
+    position: relative;
+  }
+  .dest-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .dest-input:focus { border-color: var(--accent); }
+  
+  /* SEARCH RESULTS DROPDOWN */
+  .search-results {
+    position: absolute; top: 100%; left: 20px; right: 20px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 0 0 10px 10px; z-index: 2000; max-height: 200px;
+    overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  }
+  .search-results.visible { display: block; }
+  .search-item {
+    padding: 10px 12px; font-size: 0.82rem; cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .search-item:hover { background: rgba(59,130,246,0.2); }
+
   /* STEP 1 — SHARE LINK */
   .share-panel {
     padding: 20px;
@@ -279,10 +314,10 @@
     animation: pulse 2s ease infinite;
   }
 
-  /* ADD PERSON MODAL */
+  /* MODALS */
   .modal-overlay {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); z-index: 9000;
+    background: rgba(0,0,0,0.75); z-index: 9000;
     backdrop-filter: blur(8px);
     align-items: center; justify-content: center;
   }
@@ -321,12 +356,13 @@
   }
   .btn-confirm:hover { opacity: 0.9; }
 
-  /* ─── STREET VIEW MODAL ─── */
+  /* ─── 360° VIEW MODAL ─── */
   .sv-modal {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 20px; width: 92%; max-width: 800px; height: 80vh;
+    border-radius: 20px; width: 92%; max-width: 900px; height: 80vh;
     display: flex; flex-direction: column; overflow: hidden;
     animation: scaleIn 0.25s ease;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
   }
   .sv-header {
     padding: 16px 20px; background: var(--surface2);
@@ -339,7 +375,8 @@
     font-size: 1.4rem; cursor: pointer; transition: color 0.2s;
   }
   .sv-close:hover { color: var(--text); }
-  .sv-iframe { width: 100%; flex: 1; border: none; background: var(--bg); }
+  .sv-container { width: 100%; flex: 1; background: var(--bg); position: relative; }
+  #panoFrame { width: 100%; height: 100%; border: none; }
 
   /* ─── MAP AREA ─── */
   .map-area { flex: 1; position: relative; }
@@ -365,7 +402,7 @@
     z-index: 500; background: rgba(15,23,36,0.95);
     border: 1px solid var(--border); border-radius: 16px;
     padding: 16px 24px; backdrop-filter: blur(20px);
-    min-width: 280px; text-align: center;
+    min-width: 300px; text-align: center;
     display: none;
   }
   .arrival-banner.visible { display: block; animation: slideUp 0.4s ease; }
@@ -374,18 +411,17 @@
   .banner-eta { font-size: 2rem; font-weight: 300; color: var(--accent2); font-family: 'Syne', sans-serif; }
   .banner-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
   
-  /* EXPLORE INSIDE BUTTON */
   .explore-btn {
-    margin-top: 12px; padding: 8px 18px; border-radius: 20px;
+    margin-top: 12px; padding: 10px 20px; border-radius: 20px;
     background: linear-gradient(135deg, var(--accent2), #02c39a);
     color: #080c14; font-family: 'Syne', sans-serif; font-weight: 700;
-    font-size: 0.82rem; border: none; cursor: pointer;
+    font-size: 0.85rem; border: none; cursor: pointer;
     box-shadow: 0 0 16px rgba(6,214,160,0.3); transition: all 0.2s ease;
     display: inline-flex; align-items: center; gap: 6px;
   }
   .explore-btn:hover { transform: scale(1.05); box-shadow: 0 0 24px rgba(6,214,160,0.5); }
 
-  /* ─── MY LOCATION PANEL ─── */
+  /* MY LOCATION PANEL */
   .my-location-panel {
     position: absolute; top: 16px; left: 16px; z-index: 500;
     background: rgba(15,23,36,0.92); border: 1px solid var(--border);
@@ -407,21 +443,18 @@
   }
   .toast.show { display: block; }
 
-  /* ANIMATIONS */
   @keyframes fadeDown { from{transform:translateY(-20px);opacity:0;} to{transform:translateY(0);opacity:1;} }
 
-  /* RESPONSIVE */
   @media (max-width: 700px) {
     .steps-strip { flex-direction: column; }
     .step-item:not(:last-child)::after { content: '↓'; right: auto; left: 50%; transform: translateX(-50%); bottom: -12px; top: auto; }
     .step-item:not(:last-child) { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 12px; }
     .app-body { flex-direction: column; }
-    .sidebar { width: 100%; height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar { width: 100%; height: 320px; border-right: none; border-bottom: 1px solid var(--border); }
     .map-area { flex: 1; min-height: 300px; }
     .my-location-panel { display: none; }
   }
 
-  /* Leaflet dark overrides */
   .leaflet-tile { filter: invert(1) hue-rotate(190deg) brightness(0.85) saturate(1.3); }
   .leaflet-container { background: var(--bg); }
 </style>
@@ -484,7 +517,6 @@
 
 <!-- ══════════════════ APP ══════════════════ -->
 <div id="app">
-  <!-- NAV -->
   <nav class="app-nav">
     <div class="nav-logo">📍 ArriveTime</div>
     <div class="nav-pulse">
@@ -495,8 +527,14 @@
   </nav>
 
   <div class="app-body">
-    <!-- SIDEBAR -->
     <div class="sidebar">
+
+      <!-- FREE OPENSTREETMAP SEARCH -->
+      <div class="dest-panel">
+        <div class="panel-title">📍 Search Destination (Free)</div>
+        <input type="text" id="destination-input" class="dest-input" placeholder="Search address or venue..." oninput="debounceSearch()" />
+        <div id="searchResults" class="search-results"></div>
+      </div>
 
       <!-- STEP 1: SHARE -->
       <div class="share-panel">
@@ -517,7 +555,6 @@
       <div class="groups-panel">
         <div class="panel-title" style="margin-bottom:18px;"><span class="badge">2</span> Who Are You Tracking?</div>
 
-        <!-- FAMILY -->
         <div class="group-section">
           <div class="group-header">
             <div class="group-name">
@@ -529,7 +566,6 @@
           <div id="family-list"></div>
         </div>
 
-        <!-- FRIENDS -->
         <div class="group-section">
           <div class="group-header">
             <div class="group-name">
@@ -541,7 +577,6 @@
           <div id="friends-list"></div>
         </div>
 
-        <!-- BUSINESS -->
         <div class="group-section">
           <div class="group-header">
             <div class="group-name">
@@ -559,26 +594,23 @@
     <div class="map-area">
       <div id="map"></div>
 
-      <!-- MY LOCATION -->
       <div class="my-location-panel">
         <div class="ml-label">📍 My Location</div>
         <div class="ml-coords" id="myCoords">Acquiring GPS...</div>
         <div class="ml-accuracy" id="myAccuracy"></div>
       </div>
 
-      <!-- MAP CONTROLS -->
       <div class="map-controls">
         <button class="map-ctrl-btn" onclick="centerOnMe()" title="Center on me">🎯</button>
         <button class="map-ctrl-btn" onclick="fitAll()" title="Fit all">👁</button>
         <button class="map-ctrl-btn" onclick="toggleSatellite()" title="Toggle style" id="satBtn">🛰</button>
       </div>
 
-      <!-- ARRIVAL BANNER -->
       <div class="arrival-banner" id="arrivalBanner">
         <div class="banner-name" id="bannerName">—</div>
         <div class="banner-eta" id="bannerEta">—</div>
         <div class="banner-sub" id="bannerSub">Estimated arrival time</div>
-        <button class="explore-btn" onclick="openStreetView()">🌐 Explore Inside</button>
+        <button class="explore-btn" id="exploreBtn" onclick="openStreetView()">🌐 Free 360° View / Preview</button>
       </div>
     </div>
   </div>
@@ -604,11 +636,6 @@
       <label class="form-label">Emoji / Icon</label>
       <input class="form-input" id="addEmoji" placeholder="e.g. 👩 👴 🚗" maxlength="4" value="👤" />
     </div>
-    <div class="form-field">
-      <label class="form-label" style="font-size:0.7rem;color:var(--muted)">
-        Share their unique link so they can share location with you
-      </label>
-    </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-confirm" onclick="confirmAdd()">Add & Generate Link</button>
@@ -616,14 +643,16 @@
   </div>
 </div>
 
-<!-- STREET VIEW MODAL -->
+<!-- FREE 360° PANORAMA MODAL -->
 <div class="modal-overlay" id="streetViewModal">
   <div class="sv-modal">
     <div class="sv-header">
-      <div class="sv-title" id="svTitle">360° View</div>
+      <div class="sv-title" id="svTitle">360° Destination Preview (OpenStreetCam/Mapillary)</div>
       <button class="sv-close" onclick="closeStreetView()">✕</button>
     </div>
-    <iframe class="sv-iframe" id="svIframe" src="" allowfullscreen loading="lazy"></iframe>
+    <div class="sv-container">
+      <iframe id="panoFrame" src=""></iframe>
+    </div>
   </div>
 </div>
 
@@ -632,7 +661,7 @@
 
 <script>
 // ══════════════════════════════
-//  STATE & FIREBASE CONNECTION
+//  FIREBASE CONFIG
 // ══════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyCvJDFCjiG87R-27_sCVpjQkaFf7xM3pmQ",
@@ -644,13 +673,11 @@ const firebaseConfig = {
   appId: "1:565109802674:web:543df846eac81f2b49ebab"
 };
 
-// Initialize Firebase Realtime Database
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const database = firebase.database();
 
-// Get or generate URL Session Room ID
 const urlParams = new URLSearchParams(window.location.search);
 let SESSION_ID = urlParams.get('session');
 if (!SESSION_ID) {
@@ -659,22 +686,20 @@ if (!SESSION_ID) {
   window.history.pushState({path: newUrl}, '', newUrl);
 }
 
-// Session User Identity Setup
 const MY_USER_ID = 'u_' + Math.random().toString(36).substr(2, 6);
 
-let map, myMarker, myLat, myLng;
+let map, myMarker, destMarker, myLat, myLng;
 let watchId = null;
 let satellite = false;
 let people = {};
 let selectedPerson = null;
 let tileLayer;
 
-const GROUP_COLORS = { family: '#06d6a0', friends: '#f72585', business: '#fbbf24' };
-const GROUP_EMOJIS = { family: '🏠', friends: '🎉', business: '💼' };
+let searchTimeout = null;
+let destinationLatLng = null;
 
-// ══════════════════════════════
-//  LANDING & SHARE SETUP
-// ══════════════════════════════
+const GROUP_COLORS = { family: '#06d6a0', friends: '#f72585', business: '#fbbf24' };
+
 function launchApp() {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -685,8 +710,7 @@ function launchApp() {
 }
 
 function updateShareLink() {
-  const linkText = window.location.href;
-  document.getElementById('shareLinkText').textContent = linkText;
+  document.getElementById('shareLinkText').textContent = window.location.href;
 }
 
 function copyShareLink() {
@@ -706,18 +730,25 @@ function shareVia(method) {
   }
 }
 
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
 // ══════════════════════════════
-//  MAP INITIALIZATION
+//  LEAFLET MAP SETUP
 // ══════════════════════════════
 function initMap() {
   if (map) return;
   map = L.map('map', { zoomControl: false, attributionControl: false });
 
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-  map.setView([37.7749, -122.4194], 12);
+  map.setView([37.2707, -76.7075], 13); // Default Williamsburg, VA
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.control.attribution({ position: 'bottomright', prefix: '© OSM' }).addTo(map);
+  L.control.attribution({ position: 'bottomright', prefix: '© OpenStreetMap' }).addTo(map);
 
   map.on('click', () => {
     document.getElementById('arrivalBanner').classList.remove('visible');
@@ -726,14 +757,106 @@ function initMap() {
   });
 }
 
+function centerOnMe() {
+  if (myLat && myLng) map.setView([myLat, myLng], 15);
+}
+
+function fitAll() {
+  const bounds = [];
+  if (myLat && myLng) bounds.push([myLat, myLng]);
+  if (destinationLatLng) bounds.push(destinationLatLng);
+  Object.values(people).forEach(p => { if (p.lat && p.lng) bounds.push([p.lat, p.lng]); });
+  
+  if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+function toggleSatellite() {
+  satellite = !satellite;
+  if (satellite) {
+    tileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    document.getElementById('satBtn').style.borderColor = 'var(--accent2)';
+  } else {
+    tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    document.getElementById('satBtn').style.borderColor = 'var(--border)';
+  }
+}
+
 // ══════════════════════════════
-//  GPS / GEOLOCATION PIPELINE
+//  100% FREE SEARCH (NOMINATIM / OPENSTREETMAP)
 // ══════════════════════════════
-function startGPS() {
-  if (!navigator.geolocation) {
-    document.getElementById('myCoords').textContent = 'GPS not supported';
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(performSearch, 350);
+}
+
+function performSearch() {
+  const q = document.getElementById('destination-input').value.trim();
+  const resultsBox = document.getElementById('searchResults');
+  
+  if (q.length < 3) {
+    resultsBox.classList.remove('visible');
     return;
   }
+
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
+    .then(res => res.json())
+    .then(data => {
+      resultsBox.innerHTML = '';
+      if (!data || data.length === 0) {
+        resultsBox.classList.remove('visible');
+        return;
+      }
+
+      data.slice(0, 5).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-item';
+        div.textContent = item.display_name;
+        div.onclick = () => selectDestination(item.lat, item.lon, item.display_name);
+        resultsBox.appendChild(div);
+      });
+      resultsBox.classList.add('visible');
+    })
+    .catch(() => resultsBox.classList.remove('visible'));
+}
+
+function selectDestination(lat, lon, label) {
+  const resultsBox = document.getElementById('searchResults');
+  resultsBox.classList.remove('visible');
+  document.getElementById('destination-input').value = label.split(',')[0];
+
+  destinationLatLng = [parseFloat(lat), parseFloat(lon)];
+
+  if (destMarker) map.removeLayer(destMarker);
+  destMarker = L.marker(destinationLatLng, { icon: createDestIcon() }).addTo(map)
+    .bindPopup(`<b>${label.split(',')[0]}</b>`).openPopup();
+
+  fitAll();
+  updateAllETAs();
+}
+
+// ══════════════════════════════
+//  100% FREE 360° PREVIEW ENGINE
+// ══════════════════════════════
+function openStreetView() {
+  const target = destinationLatLng || [myLat || 37.2707, myLng || -76.7075];
+  const modal = document.getElementById('streetViewModal');
+  const frame = document.getElementById('panoFrame');
+
+  // Uses Mapillary / OpenStreetMap 360° embed engine
+  frame.src = `https://www.mapillary.com/app/?lat=${target[0]}&lng=${target[1]}&z=17&focus=map`;
+  modal.classList.add('open');
+}
+
+function closeStreetView() {
+  document.getElementById('streetViewModal').classList.remove('open');
+  document.getElementById('panoFrame').src = '';
+}
+
+// ══════════════════════════════
+//  GPS & LOCATION TRACKING
+// ══════════════════════════════
+function startGPS() {
+  if (!navigator.geolocation) return;
   const opts = { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 };
 
   navigator.geolocation.getCurrentPosition(onPosition, onGPSError, opts);
@@ -746,7 +869,7 @@ function onPosition(pos) {
   const acc = Math.round(pos.coords.accuracy);
 
   document.getElementById('myCoords').textContent = `${myLat.toFixed(5)}, ${myLng.toFixed(5)}`;
-  document.getElementById('myAccuracy').textContent = `±${acc}m accuracy · ${getSourceLabel(pos)}`;
+  document.getElementById('myAccuracy').textContent = `±${acc}m accuracy · Live GPS`;
 
   if (!myMarker) {
     myMarker = L.marker([myLat, myLng], { icon: createMyIcon() }).addTo(map);
@@ -755,7 +878,6 @@ function onPosition(pos) {
     myMarker.setLatLng([myLat, myLng]);
   }
 
-  // Push updated tracking coordinate directly to Firebase
   database.ref('sessions/' + SESSION_ID + '/users/' + MY_USER_ID).update({
     id: MY_USER_ID,
     name: "Me",
@@ -769,33 +891,12 @@ function onPosition(pos) {
   updateAllETAs();
 }
 
-function getSourceLabel(pos) {
-  const acc = pos.coords.accuracy;
-  if (acc < 20) return 'GPS';
-  if (acc < 100) return 'GPS/WiFi';
-  return 'WiFi/Cell';
-}
-
-function onGPSError(err) {
-  fetch('https://ipapi.co/json/')
-    .then(r => r.json())
-    .then(d => {
-      myLat = d.latitude; myLng = d.longitude;
-      document.getElementById('myCoords').textContent = `${myLat.toFixed(4)}, ${myLng.toFixed(4)}`;
-      document.getElementById('myAccuracy').textContent = 'IP Location (approx.)';
-      if (!myMarker) {
-        myMarker = L.marker([myLat, myLng], { icon: createMyIcon() }).addTo(map);
-        map.setView([myLat, myLng], 12);
-      }
-      updateAllETAs();
-    })
-    .catch(() => {
-      document.getElementById('myCoords').textContent = 'Location unavailable';
-    });
+function onGPSError() {
+  document.getElementById('myCoords').textContent = 'Location unavailable';
 }
 
 // ══════════════════════════════
-//  FIREBASE REALTIME SYNC
+//  REALTIME SYNC & ETA MATRIX
 // ══════════════════════════════
 function listenForFirebaseUpdates() {
   const sessionRef = database.ref('sessions/' + SESSION_ID + '/users');
@@ -837,8 +938,44 @@ function processFirebaseUser(data) {
   updateAllETAs();
 }
 
+function updateAllETAs() {
+  Object.values(people).forEach(p => {
+    let targetLat = myLat;
+    let targetLng = myLng;
+
+    if (destinationLatLng) {
+      targetLat = destinationLatLng[0];
+      targetLng = destinationLatLng[1];
+    }
+
+    if (p.lat && p.lng && targetLat && targetLng) {
+      const miles = calculateHaversine(p.lat, p.lng, targetLat, targetLng);
+      const minutes = Math.round((miles / 30) * 60);
+      
+      if (minutes < 1) p.etaLabel = 'Arrived!';
+      else if (minutes < 60) p.etaLabel = `${minutes} min (${miles.toFixed(1)} mi)`;
+      else p.etaLabel = `${Math.floor(minutes/60)}h ${minutes%60}m`;
+    } else {
+      p.etaLabel = 'Calculating...';
+    }
+  });
+
+  renderLists();
+  if (selectedPerson) updateBanner(selectedPerson);
+}
+
+function calculateHaversine(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 // ══════════════════════════════
-//  MAP CONTROLS & ICONS
+//  UI MARKERS & LISTS
 // ══════════════════════════════
 function createMyIcon() {
   return L.divIcon({
@@ -850,42 +987,73 @@ function createMyIcon() {
 function createPersonIcon(p) {
   const color = GROUP_COLORS[p.group] || '#3b82f6';
   return L.divIcon({
-    html: `<div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2.5px solid ${color};display:grid;place-items:center;font-size:18px;box-shadow:0 0 16px ${color}55;cursor:pointer;backdrop-filter:blur(4px);">${p.emoji}</div>
-    <div style="position:absolute;top:42px;left:50%;transform:translateX(-50%);background:rgba(8,12,20,0.9);border:1px solid ${color}66;border-radius:6px;padding:3px 8px;white-space:nowrap;font-size:0.7rem;color:#fff;font-family:'DM Sans',sans-serif;font-weight:500;">${p.name} ${p.etaLabel || ''}</div>`,
+    html: `<div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2.5px solid ${color};display:grid;place-items:center;font-size:18px;box-shadow:0 0 15px ${color}88;">${p.emoji}</div>`,
     iconSize: [40, 40], iconAnchor: [20, 20], className: ''
   });
 }
 
-function centerOnMe() {
-  if (myLat && myLng) map.flyTo([myLat, myLng], 15);
+function createDestIcon() {
+  return L.divIcon({
+    html: `<div style="width:42px;height:42px;border-radius:50%;background:#fbbf24;display:grid;place-items:center;font-size:22px;border:3px solid #fff;box-shadow:0 0 25px rgba(251,191,36,0.6);">🏁</div>`,
+    iconSize: [42, 42], iconAnchor: [21, 21], className: ''
+  });
 }
 
-function fitAll() {
-  const markers = [myMarker, ...Object.values(people).map(p => p.marker)].filter(Boolean);
-  if (markers.length > 0) {
-    const group = L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.2));
-  }
+function selectPerson(p) {
+  selectedPerson = p;
+  map.setView([p.lat, p.lng], 15);
+  updateBanner(p);
+  renderLists();
 }
 
-function toggleSatellite() {
-  satellite = !satellite;
-  if (satellite) {
-    tileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-  } else {
-    tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-  }
+function updateBanner(p) {
+  const banner = document.getElementById('arrivalBanner');
+  document.getElementById('bannerName').textContent = `${p.emoji} ${p.name}`;
+  document.getElementById('bannerEta').textContent = p.etaLabel || 'Calculating...';
+  document.getElementById('bannerSub').textContent = destinationLatLng ? 'Estimated time to destination' : 'Estimated time to your location';
+  banner.classList.add('visible');
+}
+
+function renderLists() {
+  ['family', 'friends', 'business'].forEach(group => {
+    const listEl = document.getElementById(`${group}-list`);
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const groupPeople = Object.values(people).filter(p => p.group === group);
+    
+    if (groupPeople.length === 0) {
+      listEl.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">No active members</div>`;
+      return;
+    }
+
+    groupPeople.forEach(p => {
+      const activeClass = (selectedPerson && selectedPerson.id === p.id) ? 'active' : '';
+      const color = GROUP_COLORS[p.group];
+      const card = document.createElement('div');
+      card.className = `person-card ${activeClass}`;
+      card.onclick = () => selectPerson(p);
+      card.innerHTML = `
+        <div class="avatar" style="border-color:${color};background:${color}15;">${p.emoji}</div>
+        <div class="person-info">
+          <div class="person-name">${p.name}</div>
+          <div class="person-eta">⏱ <span class="eta-time">${p.etaLabel || 'Calculating...'}</span></div>
+        </div>
+        <div class="status-dot" style="background:${color}"></div>
+      `;
+      listEl.appendChild(card);
+    });
+  });
 }
 
 // ══════════════════════════════
-//  PEOPLE & LIST UI MANAGEMENT
+//  MODALS
 // ══════════════════════════════
+let currentAddGroup = 'family';
 function openAddModal(group) {
+  currentAddGroup = group;
   document.getElementById('addGroup').value = group;
-  document.getElementById('addName').value = '';
-  document.getElementById('addEmoji').value = group === 'family' ? '👤' : group === 'friends' ? '🙂' : '💼';
   document.getElementById('addModal').classList.add('open');
-  setTimeout(() => document.getElementById('addName').focus(), 100);
 }
 
 function closeModal() {
@@ -897,135 +1065,25 @@ function confirmAdd() {
   const group = document.getElementById('addGroup').value;
   const emoji = document.getElementById('addEmoji').value.trim() || '👤';
 
-  if (!name) return;
+  if (!name) {
+    showToast("⚠️ Please enter a name");
+    return;
+  }
 
-  const newId = 'u_' + Math.random().toString(36).substr(2, 6);
-  const offsetLat = (myLat || 37.7749) + (Math.random() - 0.5) * 0.05;
-  const offsetLng = (myLng || -122.4194) + (Math.random() - 0.5) * 0.05;
-
-  database.ref('sessions/' + SESSION_ID + '/users/' + newId).set({
-    id: newId,
+  const newUserId = 'u_' + Math.random().toString(36).substr(2, 6);
+  database.ref('sessions/' + SESSION_ID + '/users/' + newUserId).set({
+    id: newUserId,
     name: name,
     group: group,
     emoji: emoji,
-    lat: offsetLat,
-    lng: offsetLng,
+    lat: (myLat || 37.2707) + (Math.random() - 0.5) * 0.02,
+    lng: (myLng || -76.7075) + (Math.random() - 0.5) * 0.02,
     updatedAt: firebase.database.ServerValue.TIMESTAMP
   });
 
   closeModal();
-  showToast(`✅ Added ${name}! Tracking initialized.`);
-}
-
-function selectPerson(p) {
-  selectedPerson = p;
-  map.flyTo([p.lat, p.lng], 15);
-  
-  document.getElementById('bannerName').textContent = `${p.emoji} ${p.name}`;
-  document.getElementById('bannerEta').textContent = p.etaLabel || 'Calculating...';
-  document.getElementById('bannerSub').textContent = `Distance: ${p.distanceLabel || 'Calculating...'}`;
-  document.getElementById('arrivalBanner').classList.add('visible');
-
-  renderLists();
-}
-
-function renderLists() {
-  const groups = { family: [], friends: [], business: [] };
-  Object.values(people).forEach(p => {
-    if (groups[p.group]) groups[p.group].push(p);
-  });
-
-  ['family', 'friends', 'business'].forEach(groupKey => {
-    const container = document.getElementById(`${groupKey}-list`);
-    if (!container) return;
-
-    if (groups[groupKey].length === 0) {
-      container.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);padding:8px 0;">No active trackers yet</div>`;
-      return;
-    }
-
-    container.innerHTML = groups[groupKey].map(p => {
-      const activeClass = selectedPerson && selectedPerson.id === p.id ? 'active' : '';
-      const color = GROUP_COLORS[p.group];
-      return `
-        <div class="person-card ${activeClass}" onclick='selectPerson(people["${p.id}"])'>
-          <div class="avatar" style="background:${color}22;border-color:${color}">${p.emoji}</div>
-          <div class="person-info">
-            <div class="person-name">${p.name}</div>
-            <div class="person-eta">
-              <span class="status-dot" style="background:${color}"></span>
-              ETA: <span class="eta-time">${p.etaLabel || 'Calculating...'}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  });
-}
-
-function updateAllETAs() {
-  if (!myLat || !myLng) return;
-
-  Object.values(people).forEach(p => {
-    const distKm = getHaversineDistance(myLat, myLng, p.lat, p.lng);
-    const speedKmh = 40; // Assumed average city driving speed
-    const timeHours = distKm / speedKmh;
-    const timeMinutes = Math.round(timeHours * 60);
-
-    p.distanceLabel = distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)} km`;
-    p.etaLabel = timeMinutes <= 1 ? 'Arriving now' : `~${timeMinutes} mins`;
-
-    if (p.marker) {
-      p.marker.setIcon(createPersonIcon(p));
-    }
-  });
-
-  if (selectedPerson && people[selectedPerson.id]) {
-    document.getElementById('bannerEta').textContent = people[selectedPerson.id].etaLabel;
-    document.getElementById('bannerSub').textContent = `Distance: ${people[selectedPerson.id].distanceLabel}`;
-  }
-
-  renderLists();
-}
-
-function getHaversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-// ══════════════════════════════
-//  STREET VIEW / EXPLORE INSIDE
-// ══════════════════════════════
-function openStreetView() {
-  if (!selectedPerson) return;
-  const lat = selectedPerson.lat;
-  const lng = selectedPerson.lng;
-  const embedUrl = `https://maps.google.com/maps?q=&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&output=embed`;
-  
-  document.getElementById('svTitle').textContent = `360° Street View — ${selectedPerson.name}'s Location`;
-  document.getElementById('svIframe').src = embedUrl;
-  document.getElementById('streetViewModal').classList.add('open');
-}
-
-function closeStreetView() {
-  document.getElementById('streetViewModal').classList.remove('open');
-  document.getElementById('svIframe').src = '';
-}
-
-// ══════════════════════════════
-//  UTILITIES
-// ══════════════════════════════
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  document.getElementById('addName').value = '';
+  showToast(`✅ Added ${name}! Link updated.`);
 }
 </script>
 </body>
