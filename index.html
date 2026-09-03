@@ -647,7 +647,7 @@
 <div class="modal-overlay" id="streetViewModal">
   <div class="sv-modal">
     <div class="sv-header">
-      <div class="sv-title" id="svTitle">360° Destination Preview (OpenStreetCam/Mapillary)</div>
+      <div class="sv-title" id="svTitle">360° Destination Preview</div>
       <button class="sv-close" onclick="closeStreetView()">✕</button>
     </div>
     <div class="sv-container">
@@ -827,231 +827,145 @@ function selectDestination(lat, lon, label) {
   destinationLatLng = [parseFloat(lat), parseFloat(lon)];
 
   if (destMarker) map.removeLayer(destMarker);
-  destMarker = L.marker(destinationLatLng, { icon: createDestIcon() }).addTo(map)
+  
+  const destIcon = L.divIcon({
+    className: 'custom-dest-pin',
+    html: `<div style="font-size:26px;filter:drop-shadow(0 0 10px rgba(247,37,133,0.8));">🎯</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+
+  destMarker = L.marker(destinationLatLng, { icon: destIcon }).addTo(map)
     .bindPopup(`<b>${label.split(',')[0]}</b>`).openPopup();
 
   fitAll();
-  updateAllETAs();
+  checkArrivals();
 }
 
 // ══════════════════════════════
-//  100% FREE 360° PREVIEW ENGINE
-// ══════════════════════════════
-function openStreetView() {
-  const target = destinationLatLng || [myLat || 37.2707, myLng || -76.7075];
-  const modal = document.getElementById('streetViewModal');
-  const frame = document.getElementById('panoFrame');
-
-  // Uses Mapillary / OpenStreetMap 360° embed engine
-  frame.src = `https://www.mapillary.com/app/?lat=${target[0]}&lng=${target[1]}&z=17&focus=map`;
-  modal.classList.add('open');
-}
-
-function closeStreetView() {
-  document.getElementById('streetViewModal').classList.remove('open');
-  document.getElementById('panoFrame').src = '';
-}
-
-// ══════════════════════════════
-//  GPS & LOCATION TRACKING
+//  GPS TRACKING & ARRIVAL TRIGGER
 // ══════════════════════════════
 function startGPS() {
-  if (!navigator.geolocation) return;
-  const opts = { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 };
-
-  navigator.geolocation.getCurrentPosition(onPosition, onGPSError, opts);
-  watchId = navigator.geolocation.watchPosition(onPosition, onGPSError, opts);
-}
-
-function onPosition(pos) {
-  myLat = pos.coords.latitude;
-  myLng = pos.coords.longitude;
-  const acc = Math.round(pos.coords.accuracy);
-
-  document.getElementById('myCoords').textContent = `${myLat.toFixed(5)}, ${myLng.toFixed(5)}`;
-  document.getElementById('myAccuracy').textContent = `±${acc}m accuracy · Live GPS`;
-
-  if (!myMarker) {
-    myMarker = L.marker([myLat, myLng], { icon: createMyIcon() }).addTo(map);
-    map.setView([myLat, myLng], 14);
-  } else {
-    myMarker.setLatLng([myLat, myLng]);
+  if (!navigator.geolocation) {
+    showToast("⚠️ Geolocation not supported");
+    return;
   }
 
-  database.ref('sessions/' + SESSION_ID + '/users/' + MY_USER_ID).update({
-    id: MY_USER_ID,
-    name: "Me",
-    group: "family",
-    emoji: "📍",
-    lat: myLat,
-    lng: myLng,
-    updatedAt: firebase.database.ServerValue.TIMESTAMP
-  });
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      myLat = pos.coords.latitude;
+      myLng = pos.coords.longitude;
+      const acc = Math.round(pos.coords.accuracy);
 
-  updateAllETAs();
+      document.getElementById('myCoords').textContent = `${myLat.toFixed(4)}, ${myLng.toFixed(4)}`;
+      document.getElementById('myAccuracy').textContent = `Accuracy: ±${acc}m`;
+
+      if (!myMarker) {
+        const userIcon = L.divIcon({
+          className: 'custom-user-pin',
+          html: `<div style="font-size:24px;filter:drop-shadow(0 0 8px rgba(59,130,246,0.8));">📍</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        });
+        myMarker = L.marker([myLat, myLng], { icon: userIcon }).addTo(map);
+        map.setView([myLat, myLng], 14);
+      } else {
+        myMarker.setLatLng([myLat, myLng]);
+      }
+
+      database.ref(`sessions/${SESSION_ID}/users/${MY_USER_ID}`).update({
+        lat: myLat,
+        lng: myLng,
+        lastUpdated: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      checkArrivals();
+    },
+    (err) => {
+      document.getElementById('myCoords').textContent = "GPS Unavailable";
+    },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+  );
 }
 
-function onGPSError() {
-  document.getElementById('myCoords').textContent = 'Location unavailable';
-}
-
-// ══════════════════════════════
-//  REALTIME SYNC & ETA MATRIX
-// ══════════════════════════════
-function listenForFirebaseUpdates() {
-  const sessionRef = database.ref('sessions/' + SESSION_ID + '/users');
-  sessionRef.on('child_added', snapshot => processFirebaseUser(snapshot.val()));
-  sessionRef.on('child_changed', snapshot => processFirebaseUser(snapshot.val()));
-  sessionRef.on('child_removed', snapshot => {
-    const data = snapshot.val();
-    if (people[data.id]) {
-      map.removeLayer(people[data.id].marker);
-      delete people[data.id];
-      renderLists();
-    }
-  });
-}
-
-function processFirebaseUser(data) {
-  if (!data || data.id === MY_USER_ID) return;
-
-  if (people[data.id]) {
-    people[data.id].lat = data.lat;
-    people[data.id].lng = data.lng;
-    people[data.id].marker.setLatLng([data.lat, data.lng]);
-  } else {
-    const person = {
-      id: data.id,
-      name: data.name || 'User',
-      group: data.group || 'family',
-      emoji: data.emoji || '👤',
-      lat: data.lat,
-      lng: data.lng,
-      etaLabel: ''
-    };
-    person.marker = L.marker([data.lat, data.lng], { icon: createPersonIcon(person) })
-      .addTo(map)
-      .on('click', () => selectPerson(person));
-    
-    people[data.id] = person;
-  }
-  updateAllETAs();
-}
-
-function updateAllETAs() {
-  Object.values(people).forEach(p => {
-    let targetLat = myLat;
-    let targetLng = myLng;
-
-    if (destinationLatLng) {
-      targetLat = destinationLatLng[0];
-      targetLng = destinationLatLng[1];
-    }
-
-    if (p.lat && p.lng && targetLat && targetLng) {
-      const miles = calculateHaversine(p.lat, p.lng, targetLat, targetLng);
-      const minutes = Math.round((miles / 30) * 60);
-      
-      if (minutes < 1) p.etaLabel = 'Arrived!';
-      else if (minutes < 60) p.etaLabel = `${minutes} min (${miles.toFixed(1)} mi)`;
-      else p.etaLabel = `${Math.floor(minutes/60)}h ${minutes%60}m`;
-    } else {
-      p.etaLabel = 'Calculating...';
-    }
-  });
-
-  renderLists();
-  if (selectedPerson) updateBanner(selectedPerson);
-}
-
-function calculateHaversine(lat1, lon1, lat2, lon2) {
-  const R = 3958.8;
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
             Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
-// ══════════════════════════════
-//  UI MARKERS & LISTS
-// ══════════════════════════════
-function createMyIcon() {
-  return L.divIcon({
-    html: `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#06d6a0);display:grid;place-items:center;font-size:20px;border:3px solid #fff;box-shadow:0 0 20px rgba(59,130,246,0.5);">📍</div>`,
-    iconSize: [44, 44], iconAnchor: [22, 22], className: ''
-  });
-}
+function checkArrivals() {
+  if (!destinationLatLng) return;
 
-function createPersonIcon(p) {
-  const color = GROUP_COLORS[p.group] || '#3b82f6';
-  return L.divIcon({
-    html: `<div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2.5px solid ${color};display:grid;place-items:center;font-size:18px;box-shadow:0 0 15px ${color}88;">${p.emoji}</div>`,
-    iconSize: [40, 40], iconAnchor: [20, 20], className: ''
-  });
-}
-
-function createDestIcon() {
-  return L.divIcon({
-    html: `<div style="width:42px;height:42px;border-radius:50%;background:#fbbf24;display:grid;place-items:center;font-size:22px;border:3px solid #fff;box-shadow:0 0 25px rgba(251,191,36,0.6);">🏁</div>`,
-    iconSize: [42, 42], iconAnchor: [21, 21], className: ''
-  });
-}
-
-function selectPerson(p) {
-  selectedPerson = p;
-  map.setView([p.lat, p.lng], 15);
-  updateBanner(p);
-  renderLists();
-}
-
-function updateBanner(p) {
-  const banner = document.getElementById('arrivalBanner');
-  document.getElementById('bannerName').textContent = `${p.emoji} ${p.name}`;
-  document.getElementById('bannerEta').textContent = p.etaLabel || 'Calculating...';
-  document.getElementById('bannerSub').textContent = destinationLatLng ? 'Estimated time to destination' : 'Estimated time to your location';
-  banner.classList.add('visible');
-}
-
-function renderLists() {
-  ['family', 'friends', 'business'].forEach(group => {
-    const listEl = document.getElementById(`${group}-list`);
-    if (!listEl) return;
-    listEl.innerHTML = '';
-
-    const groupPeople = Object.values(people).filter(p => p.group === group);
-    
-    if (groupPeople.length === 0) {
-      listEl.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">No active members</div>`;
-      return;
+  const allTracked = [{ id: MY_USER_ID, name: 'You', lat: myLat, lng: myLng }, ...Object.values(people)];
+  
+  allTracked.forEach(person => {
+    if (person.lat && person.lng) {
+      const distKm = calculateDistance(person.lat, person.lng, destinationLatLng[0], destinationLatLng[1]);
+      
+      // Automatic Arrival Trigger: within 50 meters (0.05 km)
+      if (distKm <= 0.05) {
+        const banner = document.getElementById('arrivalBanner');
+        document.getElementById('bannerName').textContent = `${person.name || 'Participant'} Has Arrived!`;
+        document.getElementById('bannerEta').textContent = "ARRIVED";
+        document.getElementById('bannerSub').textContent = "Reached destination";
+        
+        const exploreBtn = document.getElementById('exploreBtn');
+        exploreBtn.innerHTML = "🏢 360° Inside View";
+        exploreBtn.onclick = function() { openStreetView(); };
+        
+        banner.classList.add('visible');
+      }
     }
-
-    groupPeople.forEach(p => {
-      const activeClass = (selectedPerson && selectedPerson.id === p.id) ? 'active' : '';
-      const color = GROUP_COLORS[p.group];
-      const card = document.createElement('div');
-      card.className = `person-card ${activeClass}`;
-      card.onclick = () => selectPerson(p);
-      card.innerHTML = `
-        <div class="avatar" style="border-color:${color};background:${color}15;">${p.emoji}</div>
-        <div class="person-info">
-          <div class="person-name">${p.name}</div>
-          <div class="person-eta">⏱ <span class="eta-time">${p.etaLabel || 'Calculating...'}</span></div>
-        </div>
-        <div class="status-dot" style="background:${color}"></div>
-      `;
-      listEl.appendChild(card);
-    });
   });
 }
 
 // ══════════════════════════════
-//  MODALS
+//  FIREBASE REALTIME UPDATES
 // ══════════════════════════════
-let currentAddGroup = 'family';
+function listenForFirebaseUpdates() {
+  database.ref(`sessions/${SESSION_ID}/users`).on('value', (snapshot) => {
+    const data = snapshot.val() || {};
+    delete data[MY_USER_ID]; 
+    people = data;
+    renderLists();
+    updateMapMarkers();
+    checkArrivals();
+  });
+}
+
+function updateMapMarkers() {
+  Object.keys(people).forEach(id => {
+    const p = people[id];
+    if (p.lat && p.lng) {
+      if (!p.marker) {
+        const personIcon = L.divIcon({
+          className: 'custom-person-pin',
+          html: `<div style="font-size:22px;background:var(--surface2);border:2px solid ${GROUP_COLORS[p.group] || '#3b82f6'};border-radius:50%;width:32px;height:32px;display:grid;place-items:center;">${p.emoji || '👤'}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+        p.marker = L.marker([p.lat, p.lng], { icon: personIcon }).addTo(map)
+          .bindPopup(`<b>${p.name}</b>`);
+      } else {
+        p.marker.setLatLng([p.lat, p.lng]);
+      }
+    }
+  });
+}
+
+// ══════════════════════════════
+//  UI GROUPS & MODALS
+// ══════════════════════════════
+let currentGroupToAdd = 'family';
+
 function openAddModal(group) {
-  currentAddGroup = group;
+  currentGroupToAdd = group;
   document.getElementById('addGroup').value = group;
   document.getElementById('addModal').classList.add('open');
 }
@@ -1070,20 +984,66 @@ function confirmAdd() {
     return;
   }
 
-  const newUserId = 'u_' + Math.random().toString(36).substr(2, 6);
-  database.ref('sessions/' + SESSION_ID + '/users/' + newUserId).set({
-    id: newUserId,
+  const newId = 'u_' + Math.random().toString(36).substr(2, 6);
+  database.ref(`sessions/${SESSION_ID}/users/${newId}`).set({
     name: name,
     group: group,
     emoji: emoji,
-    lat: (myLat || 37.2707) + (Math.random() - 0.5) * 0.02,
-    lng: (myLng || -76.7075) + (Math.random() - 0.5) * 0.02,
-    updatedAt: firebase.database.ServerValue.TIMESTAMP
+    lat: null,
+    lng: null
   });
 
   closeModal();
   document.getElementById('addName').value = '';
-  showToast(`✅ Added ${name}! Link updated.`);
+  showToast(`✅ Added ${name}! Share link to start tracking.`);
+}
+
+function renderLists() {
+  ['family', 'friends', 'business'].forEach(group => {
+    const container = document.getElementById(`${group}-list`);
+    container.innerHTML = '';
+
+    Object.keys(people).filter(id => people[id].group === group).forEach(id => {
+      const p = people[id];
+      const card = document.createElement('div');
+      card.className = `person-card ${selectedPerson === id ? 'active' : ''}`;
+      card.onclick = () => {
+        selectedPerson = id;
+        if (p.lat && p.lng) map.setView([p.lat, p.lng], 15);
+        renderLists();
+      };
+
+      card.innerHTML = `
+        <div class="avatar" style="border-color:${GROUP_COLORS[group]}">${p.emoji || '👤'}</div>
+        <div class="person-info">
+          <div class="person-name">${p.name}</div>
+          <div class="person-eta">
+            <span class="status-dot" style="background:${p.lat ? 'var(--accent2)' : 'var(--muted)'}"></span>
+            <span>${p.lat ? 'Live tracking' : 'Waiting for connection...'}</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  });
+}
+
+// ══════════════════════════════
+//  360° PANORAMA MODAL
+// ══════════════════════════════
+function openStreetView() {
+  const target = destinationLatLng || [myLat || 37.2707, myLng || -76.7075];
+  const modal = document.getElementById('streetViewModal');
+  const iframe = document.getElementById('panoFrame');
+  
+  iframe.src = `https://www.mapillary.com/embed?lat=${target[0]}&lng=${target[1]}&z=17&style=photo`;
+  modal.classList.add('open');
+}
+
+function closeStreetView() {
+  const modal = document.getElementById('streetViewModal');
+  document.getElementById('panoFrame').src = '';
+  modal.classList.remove('open');
 }
 </script>
 </body>
